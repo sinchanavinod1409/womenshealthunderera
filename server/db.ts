@@ -9,7 +9,6 @@ import {
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
-import * as localSqlite from "./localSqlite";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -39,7 +38,7 @@ function requireDb() {
 // Retained for compatibility with platform identity callbacks. The public app uses its own requested username/password flow.
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) throw new Error("User openId is required for upsert");
-  if (usesLocalSqlite()) return localSqlite.upsertUser(user);
+  if (usesLocalSqlite()) return (await import("./localSqlite")).upsertUser(user);
   const db = await requireDb();
   const values: InsertUser = { openId: user.openId };
   const updateSet: Record<string, unknown> = {};
@@ -69,7 +68,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
 }
 
 export async function getUserByUsername(username: string) {
-  if (usesLocalSqlite()) return localSqlite.getUserByUsername(username);
+  if (usesLocalSqlite())
+    return (await import("./localSqlite")).getUserByUsername(username);
   const db = await requireDb();
   const rows = await db
     .select()
@@ -80,7 +80,8 @@ export async function getUserByUsername(username: string) {
 }
 
 export async function getUserByOpenId(openId: string) {
-  if (usesLocalSqlite()) return localSqlite.getUserByOpenId(openId);
+  if (usesLocalSqlite())
+    return (await import("./localSqlite")).getUserByOpenId(openId);
   const db = await requireDb();
   const rows = await db
     .select()
@@ -91,7 +92,7 @@ export async function getUserByOpenId(openId: string) {
 }
 
 export async function getUserById(id: number) {
-  if (usesLocalSqlite()) return localSqlite.getUserById(id);
+  if (usesLocalSqlite()) return (await import("./localSqlite")).getUserById(id);
   const db = await requireDb();
   const rows = await db.select().from(users).where(eq(users.id, id)).limit(1);
   return rows[0];
@@ -103,7 +104,8 @@ export async function createUsernameUser(input: {
   passwordHash: string;
   preferredLanguage: string;
 }) {
-  if (usesLocalSqlite()) return localSqlite.createUsernameUser(input);
+  if (usesLocalSqlite())
+    return (await import("./localSqlite")).createUsernameUser(input);
   const db = await requireDb();
   const result = await db.insert(users).values({
     username: input.username,
@@ -121,7 +123,8 @@ export async function createUsernameUser(input: {
 }
 
 export async function updateLastSignedIn(id: number) {
-  if (usesLocalSqlite()) return localSqlite.updateLastSignedIn(id);
+  if (usesLocalSqlite())
+    return (await import("./localSqlite")).updateLastSignedIn(id);
   const db = await requireDb();
   await db
     .update(users)
@@ -131,7 +134,7 @@ export async function updateLastSignedIn(id: number) {
 
 export async function updateUserLanguage(id: number, language: string) {
   if (usesLocalSqlite())
-    return localSqlite.updateUserLanguage(id, language);
+    return (await import("./localSqlite")).updateUserLanguage(id, language);
   const db = await requireDb();
   await db
     .update(users)
@@ -145,7 +148,11 @@ export async function createSessionRecord(
   expiresAt: Date
 ) {
   if (usesLocalSqlite())
-    return localSqlite.createSessionRecord(tokenHash, userId, expiresAt);
+    return (await import("./localSqlite")).createSessionRecord(
+      tokenHash,
+      userId,
+      expiresAt
+    );
   const db = await requireDb();
   await db
     .delete(sessions)
@@ -157,7 +164,7 @@ export async function createSessionRecord(
 
 export async function getUserBySessionHash(tokenHash: string) {
   if (usesLocalSqlite())
-    return localSqlite.getUserBySessionHash(tokenHash);
+    return (await import("./localSqlite")).getUserBySessionHash(tokenHash);
   const db = await requireDb();
   const rows = await db
     .select({ user: users })
@@ -171,7 +178,8 @@ export async function getUserBySessionHash(tokenHash: string) {
 }
 
 export async function removeSession(tokenHash: string) {
-  if (usesLocalSqlite()) return localSqlite.removeSession(tokenHash);
+  if (usesLocalSqlite())
+    return (await import("./localSqlite")).removeSession(tokenHash);
   const db = await requireDb();
   await db.delete(sessions).where(eq(sessions.tokenHash, tokenHash));
 }
@@ -182,7 +190,11 @@ export async function makeConversation(
   language: string
 ) {
   if (usesLocalSqlite())
-    return localSqlite.makeConversation(userId, title, language);
+    return (await import("./localSqlite")).makeConversation(
+      userId,
+      title,
+      language
+    );
   const db = await requireDb();
   const result = await db
     .insert(conversations)
@@ -208,7 +220,7 @@ export async function addMessage(input: {
   language: string;
   source?: "live" | "fallback" | "safety";
 }) {
-  if (usesLocalSqlite()) return localSqlite.addMessage(input);
+  if (usesLocalSqlite()) return (await import("./localSqlite")).addMessage(input);
   const db = await requireDb();
   const result = await db.insert(messages).values(input);
   await db
@@ -224,7 +236,8 @@ export async function addMessage(input: {
 }
 
 export async function getConversation(userId: number, id: number) {
-  if (usesLocalSqlite()) return localSqlite.getConversation(userId, id);
+  if (usesLocalSqlite())
+    return (await import("./localSqlite")).getConversation(userId, id);
   const db = await requireDb();
   const rows = await db
     .select()
@@ -235,7 +248,8 @@ export async function getConversation(userId: number, id: number) {
 }
 
 export async function listConversations(userId: number) {
-  if (usesLocalSqlite()) return localSqlite.listConversations(userId);
+  if (usesLocalSqlite())
+    return (await import("./localSqlite")).listConversations(userId);
   const db = await requireDb();
   return db
     .select()
@@ -250,7 +264,10 @@ export async function getConversationMessages(
   conversationId: number
 ) {
   if (usesLocalSqlite())
-    return localSqlite.getConversationMessages(userId, conversationId);
+    return (await import("./localSqlite")).getConversationMessages(
+      userId,
+      conversationId
+    );
   const db = await requireDb();
   return db
     .select()
@@ -266,7 +283,8 @@ export async function getConversationMessages(
 }
 
 export async function listSymptomReports(userId: number) {
-  if (usesLocalSqlite()) return localSqlite.listSymptomReports(userId);
+  if (usesLocalSqlite())
+    return (await import("./localSqlite")).listSymptomReports(userId);
   const db = await requireDb();
   return db
     .select()
@@ -284,7 +302,8 @@ export async function addSymptomReport(input: {
   nextSteps: string;
   source: "live" | "fallback" | "safety";
 }) {
-  if (usesLocalSqlite()) return localSqlite.addSymptomReport(input);
+  if (usesLocalSqlite())
+    return (await import("./localSqlite")).addSymptomReport(input);
   const db = await requireDb();
   const result = await db.insert(symptomReports).values(input);
   return Number(result[0].insertId);
@@ -292,7 +311,7 @@ export async function addSymptomReport(input: {
 
 export async function deleteOwnedConversation(userId: number, id: number) {
   if (usesLocalSqlite())
-    return localSqlite.deleteOwnedConversation(userId, id);
+    return (await import("./localSqlite")).deleteOwnedConversation(userId, id);
   const db = await requireDb();
   const result = await db
     .delete(conversations)
@@ -302,7 +321,7 @@ export async function deleteOwnedConversation(userId: number, id: number) {
 
 export async function deleteOwnedSymptomReport(userId: number, id: number) {
   if (usesLocalSqlite())
-    return localSqlite.deleteOwnedSymptomReport(userId, id);
+    return (await import("./localSqlite")).deleteOwnedSymptomReport(userId, id);
   const db = await requireDb();
   const result = await db
     .delete(symptomReports)
